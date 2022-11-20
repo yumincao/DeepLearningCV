@@ -1,0 +1,7 @@
+Bad AP after changing part modules.
+在修改模型的部分功能后，可能完全跑不出结果，这时候要检查：
+
+1. 修改部分的 downsample/upsample scale；通道数
+2. groundtruth可视化，是否ln连接错误。
+3. 模型读取格式。
+4. 后处理是否解析对。
