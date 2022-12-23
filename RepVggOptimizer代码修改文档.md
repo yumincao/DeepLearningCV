@@ -9,7 +9,7 @@
 
 ## 代码实现
 ### 1.config修改
-#### 在yaml最后添加：
+#### 1.1 在yaml最后添加：
     TRAINING_MODE = ‘**’ 
         # 'hyper_search' ‘RepVgg’ 'Others'
         作用：调整预训练/训练
@@ -17,8 +17,11 @@
         作用：为正式训练提供预训练的.pt模型地址  
 e.g. <code>
 TRAINIING_MODE: "RepVGG"  
+#### 1.2 在yaml定义的backbone修改为:
+    CONV_BODY = "RepOpt-FPN-YUMIN"
+
 SCALE: "trainiing_dir/hyper_search/model_024000.pth"
 </code>
-
+#### 1.2 zai
 ### main.py(train)修改
 ### 模型backbone修改
