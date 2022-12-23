@@ -29,7 +29,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
 
 ### 2. main.py(train)修改
 #### 2.1 主函数(tools.train_net.py)修改
-    添加optimizer判别
+    # 添加optimizer判别
     def train(..)
         model = ..
         device = ..
@@ -42,8 +42,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         else:
             optimizer = ..
         scheduler = ..
-其中引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
-    <code>
+##### 其中引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
     def load_scale_from_pretrained_models(cfg, device):
         weights = cfg.SCALE
         scales = None
@@ -51,8 +50,35 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         ckpt = torch.load(weights, map_location=device)
         scales = extract_scales(ckpt)
         return scales
-    </code>
-&nbsp;&nbsp;&nbsp;&nbsp; load_scale_from_pretrained_models 用到了另一个函数extract_scales在后文^*
+##### load_scale_from_pretrained_models 用到了另一个函数extract_scales, 其中又包括extract_blocks_into_list
+    # 作用：提取预训练scale用于优化器
+    def extract_scales(model):
+        blocks = []
+        extract_blocks_into_list(model['model'],blocks)
+        assert blocks != [], 'Error! False extract!'
+        scales = []
+        for b in blocks:
+            if hasattr(b, 'scale_identity'):
+                # 根据repvgg，预训练没有bias的就没有identity
+                scales.append((b.scale_identity.weight.detach(), b.scale_1x1.weight.detach(), b.scale_conv.weight.detach()))
+            else:
+                scales.append((b.scale_1x1.weight.detach(), b.scale_conv.weight.detach()))
+            print('extract scales: ', scales[-1][-2].mean(), scales[-1][-1].mean())
+        return scales
+    
+    def extract_blocks_into_list(model, blocks):
+        for name, module in model.named_children():
+            # 不同的存储路径，会显示为不同的类，我将文件放到了layers下的common.py中
+            # 此处提取的是预训练backbone中的block
+            if str(type(module)) == "<class 'layers.common.LinearAddBlock'>":
+                blocks.append(module)
+            # 此处提取的是预训练head中的block
+            elif name in ["cls.0.conv1","cls.0.block.0","cls.0.block.1","bbox.0.conv1","bbox.0.block.0","bbox.0.block.1",\
+                          "kps.0.conv1","kps.0.block.0","kps.0.block.1"]:
+                blocks.append(module)
+            else:
+                # 递归
+                extract_blocks_into_list(module, blocks)
 此外，还引入了RepVGGOptimizer(SGD),这一函数来自如
 
 ### 模型backbone修改
