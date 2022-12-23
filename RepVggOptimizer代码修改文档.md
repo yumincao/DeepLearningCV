@@ -106,6 +106,47 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
                 {'params': g_b}]
                 
     class RepVGGOptimizer(SGD):
+        """ scales is a list, scales[i] is a triple (scale_identity.weight, scale_1x1.weight, scale_conv.weight) or two-tuple if no bias """
+        def __init__(self, model, scales, cfg, momentum=0, dampening=0, weight_decay=0, nesterov=True,
+                     reinit=True, use_identity_scales_for_reinit=True,cpu_mode=False):
+            defaults = dict(lr=cfg.SOLVER.BASE_LR, momentum=cfg.SOLVER.MOMENTUM, dampening=dampening, weight_decay=weight_decay, nesterov=nesterov)
+            if nesterov and (cfg.SOLVER.MOMENTUM <= 0 or dampening !=0):
+                raise ValueError("Nesterov momentum requires a momentum and zero dampening")
+            parameters = get_optimizer_param(cfg,model)
+            super(SGD,self).__init__(parameters, defaults)
+            self.num_layers = len(scales)
+            
+            blocks = []
+            # 上文有此函数
+            extract_blocks_into_list(model, blocks)
+            convs = [b.conv for b in blocks]
+            #  检测预处理提取的所有特殊层数量，等于正式训练时候要处理的特殊层数量
+            assert len(scales) == len(convs)
+            
+            if reinit:
+                for m in mdoel.modules():
+                    if isinstance(m, nn.BatchNorm2d):
+                        gamma_init = m.weight.mean()
+                        assert gamma_init == 1.0, '=================== The data is not from scratch ====================='
+                # 对训练网络特殊层重新初始化
+                self.reinitialize(scales, convs, use_identity_scales_for_reinit)
+            # 对训练网络特殊层生成optimizer更新规则的mask
+            self.generate_gradient_masks(scales,convs,cpu_mode)
         
+        def reinitialize(self, scales_by_idx, conv2x2_by_idx, use_identity_scales):
+            for scales, conv3x3 in zip(scales_by_idx, conv3x3_by_idx):
+                in_channels = conv3x3.in_channels
+                out_channels = conv3x3.out_channels
+                kernel_1x1 = nn.Conv2d(in_channels, out_channels, 1)
+                device = conv3x3.weight.get_device()
+                kernel_size = conv3x3.kernel_size
+                kernel_1x1.to(device)
+                if len(scales) == 2:
+                    s0 = scales[0].to(device)
+                    s1`= scales[1].to(device)
+                    # 这里是我写的拓展，repvgg定死了kernel size是3,如果改成5，1 之类，则需要拓展
+                    if kernel_size == 5:
+                        pad1 = F.pad(kernel_1x1.weight, [2,2,2,2]).to(device)
+                        conv3x3.weight.data = conv3x3.
 
 ### 模型backbone修改
