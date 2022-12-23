@@ -9,7 +9,7 @@
 
 ## 代码实现
 ### config修改
-1）在yaml最后添加：
+    在yaml最后添加：
     TRAINING_MODE作用：调整预训练/训练
     SCALE作用：为正式训练提供预训练的.pt模型地址  
 
