@@ -12,9 +12,9 @@
 #### 1.1 在yaml最后添加：
     TRAINING_MODE = ‘**’ 
         # 'hyper_search' ‘RepVgg’ 'Others'
-        作用：调整预训练/训练
-    SCALE = path
-        作用：为正式训练提供预训练的.pt模型地址 (预训练时SCALE='')
+        # 作用：调整预训练/训练
+    SCALE = 'path'
+        # 作用：为正式训练提供预训练的.pt模型地址 (预训练时SCALE='')
 e.g. 
 <code>
 TRAINIING_MODE: "RepVGG"  
@@ -30,8 +30,29 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
 ### 2. main.py(train)修改
 #### 2.1 主函数(tools.train_net.py)修改
     添加optimizer判别
+    def train(..)
+        model = ..
+        device = ..
+        model.to(device)
+        
+        if cfg.TRAINING_MODE == 'RepVgg':
+            scales = load_scale_from_pretrained_models(cfg,device)
+            reinit = True
+            optimizer = RepVGGOptimizer(model,scale,cfg,reinit=reinit)
+        else:
+            optimizer = ..
+        scheduler = ..
+其中引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
     <code>
+    def load_scale_from_pretrained_models(cfg, device):
+        weights = cfg.SCALE
+        scales = None
+        assert weights, "ERROR: NO scales provided to init RepOptimizer"
+        ckpt = torch.load(weights, map_location=device)
+        scales = extract_scales(ckpt)
+        return scales
     </code>
-
+&nbsp;&nbsp;&nbsp;&nbsp; load_scale_from_pretrained_models 用到了另一个函数extract_scales在后文^*
+此外，还引入了RepVGGOptimizer(SGD),这一函数来自如
 
 ### 模型backbone修改
