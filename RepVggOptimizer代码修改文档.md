@@ -28,5 +28,10 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
     _C.SCALE = ""
 
 ### 2. main.py(train)修改
+#### 2.1 主函数(tools.train_net.py)修改
+    添加optimizer判别
+    <code>
+    </code>
+
 
 ### 模型backbone修改
