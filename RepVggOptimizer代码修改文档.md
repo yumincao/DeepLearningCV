@@ -8,11 +8,17 @@
 <br>   &nbsp;&nbsp;  2.W'<sup>(i+1)</sup> $\leftarrow$ W'<sup>(i)</sup> - $\lambda$(1+s<sup>2</sup>+t<sup>2</sup>) $\partial L$ $\div$ $\partial$ W'<sup>(i)</sup>
 
 ## 代码实现
-### config修改
+### 1.config修改
 #### 在yaml最后添加：
-    TRAINING_MODE作用：调整预训练/训练
-    SCALE作用：为正式训练提供预训练的.pt模型地址  
-
+    TRAINING_MODE = ‘**’ 
+        # 'hyper_search' ‘RepVgg’ 'Others'
+        作用：调整预训练/训练
+    SCALE = path
+        作用：为正式训练提供预训练的.pt模型地址  
+e.g. <code>
+TRAINIING_MODE: "RepVGG"  
+SCALE: "trainiing_dir/hyper_search/model_024000.pth"
+</code>
 
 ### main.py(train)修改
 ### 模型backbone修改
