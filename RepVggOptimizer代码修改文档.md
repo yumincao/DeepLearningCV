@@ -42,7 +42,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         else:
             optimizer = ..
         scheduler = ..
-##### 其中引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
+##### 其中[主函数修改]引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
     def load_scale_from_pretrained_models(cfg, device):
         weights = cfg.SCALE
         scales = None
@@ -79,7 +79,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             else:
                 # 递归
                 extract_blocks_into_list(module, blocks)
-##### 此外，还引入了RepVGGOptimizer,它继承了SGD，并依据《原理》中公式1进行初始化，公式2进行更新
+##### 此外，[主函数修改]还引入了RepVGGOptimizer,它继承了SGD，并依据《原理》中公式1进行初始化，公式2进行更新
     import numpy as np
     import torch
     import torch.nn as nn
