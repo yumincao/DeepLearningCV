@@ -79,6 +79,33 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             else:
                 # 递归
                 extract_blocks_into_list(module, blocks)
-此外，还引入了RepVGGOptimizer(SGD),这一函数来自如
+##### 此外，还引入了RepVGGOptimizer,它继承了SGD，并依据《原理》中公式1进行初始化，公式2进行更新
+    import numpy as np
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch.optim.sgd import SGD
+    from copy import deepcopy
+    
+    def get_optimizer_param(cfg, model):
+        # 这三行代码作用是,如果batch size 非标准(4，8，16，32)，则对weight decay乘相应因子
+        accumulate = max(1,round(64 /cfg.SOLVER.IMS_PER_BATCH))
+        WEIGHT_DECAY = deepcopy(cfg.SOLVER.WEIGHT_DECAY)
+        WEIGHT_DECAY *= CFG.SOLVER.IMS_PER_BATCH * accumulate / 64
+        
+        g_bnw, g_w, g_b = [], [], []
+        for v in model.modules():
+            if hasattr(v,'bias') and isinstance(v.bias, nn.Parameter):
+                g_b.append(v.bias)
+            if isinstance(v, nn.BatchNorm2d):
+                g_bnw.append(v.weight)
+            elif hasattr(v, 'weight') and isinstance(v.weight, nn.Parameter):
+                g_w.append(weight)
+        return [{'params': g_bnw},
+                {'params': g_w, 'weight_decay':WEIGHT_DECAY},
+                {'params': g_b}]
+                
+    class RepVGGOptimizer(SGD):
+        
 
 ### 模型backbone修改
