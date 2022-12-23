@@ -6,9 +6,13 @@
 <br>上文***普通conv***： 应满足
 <br>   &nbsp;&nbsp;  1.W<sup>(0)</sup> = s * W<sub>3x3</sub><sup>(0)</sup> + t * W<sub>1x1</sub><sup>(0)</sup>
 <br>   &nbsp;&nbsp;  2.W'<sup>(i+1)</sup> $\leftarrow$ W'<sup>(i)</sup> - $\lambda$(1+s<sup>2</sup>+t<sup>2</sup>) $\partial L$ $\div$ $\partial$ W'<sup>(i)</sup>
+
 ## 代码实现
 ### config修改
+1）在yaml最后添加：
     TRAINING_MODE作用：调整预训练/训练
-		SCALE作用：为正式训练提供预训练的.pt模型地址
+    SCALE作用：为正式训练提供预训练的.pt模型地址  
+
+
 ### main.py(train)修改
 ### 模型backbone修改
