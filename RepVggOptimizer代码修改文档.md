@@ -49,7 +49,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         else:
             optimizer = ..
         scheduler = ..
-##### 其中[主函数修改]引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
+##### 其中[添加optimizer判别]引入了 load_scale_from_pretrained_models, 其作用为从预训练的模型中提取scale因子
     def load_scale_from_pretrained_models(cfg, device):
         weights = cfg.SCALE
         scales = None
@@ -57,7 +57,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         ckpt = torch.load(weights, map_location=device)
         scales = extract_scales(ckpt)
         return scales
-##### load_scale_from_pretrained_models 用到了另一个函数extract_scales, 其中又包括extract_blocks_into_list
+##### load_scale_from_pretrained_models 用到了另一个函数extract_scales, extract_scales又调用了extract_blocks_into_list
     # 作用：提取预训练scale用于优化器
     def extract_scales(model):
         blocks = []
@@ -86,7 +86,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             else:
                 # 递归
                 extract_blocks_into_list(module, blocks)
-##### 此外，[主函数修改]还引入了RepVGGOptimizer,它继承了SGD，并依据《原理》中公式1进行初始化，公式2进行更新
+##### 此外，[添加optimizer判别]还引入了RepVGGOptimizer,它继承了SGD，并依据《原理》中公式1进行初始化，公式2进行更新
     import numpy as np
     import torch
     import torch.nn as nn
