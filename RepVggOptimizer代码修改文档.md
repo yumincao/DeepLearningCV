@@ -133,6 +133,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             # 对训练网络特殊层生成optimizer更新规则的mask
             self.generate_gradient_masks(scales,convs,cpu_mode)
         
+        # 初始化
         def reinitialize(self, scales_by_idx, conv2x2_by_idx, use_identity_scales):
             for scales, conv3x3 in zip(scales_by_idx, conv3x3_by_idx):
                 in_channels = conv3x3.in_channels
@@ -147,6 +148,112 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
                     # 这里是我写的拓展，repvgg定死了kernel size是3,如果改成5，1 之类，则需要拓展
                     if kernel_size == 5:
                         pad1 = F.pad(kernel_1x1.weight, [2,2,2,2]).to(device)
-                        conv3x3.weight.data = conv3x3.
-
+                        conv3x3.weight.data = conv3x3.weight * s1.view(-1,1,1,1) + pad1 * s0.view(-1,1,1,1)
+                    elif kernel_size == 3:
+                        pad1 = F.pad(kernel_1x1.weight, [1,1,1,1]).to(device)
+                        conv3x3.weight.data = conv3x3.weight * s1.view(-1,1,1,1) + pad1 * s0.view(-1,1,1,1)
+                    elif kernel_size == 1:
+                        pad1 = F.pad(kernel_1x1.weight, [0,0,0,0]).to(device)
+                        conv3x3.weight.data = conv3x3.weight * s1.view(-1,1,1,1) + pad1 * s0.view(-1,1,1,1)
+                else:
+                    assert len(scales) == 3
+                    assert in_channels == out_channels
+                    s0 = scales[0].to(device)
+                    s1 = scales[1].to(device)
+                    s2 = scales[2].to(device)
+                    identity = torch.from_numpy(np.eye(out_channels, dtype=np.float32).reshape(out_channels,out_channels,1,1)).to(conv3x3.weight.device)
+                    identity.to(device)
+                    if kernel_size == 3:
+                        pad1 = F.pad(kernel_1x1.weight, [1,1,1,1]).to(device)
+                        conv3x3.weight.data = conv3x3.weight * s2.view(-1,1,1,1) + pad1 * s1.view(-1,1,1,1)
+                        if use_identity_scales:
+                            identity_scale_weight = s0
+                            pad3 = F.pad(identity*identity_scale_weight.view(-1,1,1,1),[1,1,1,1]).to(device)
+                            conv3x3.weight.data += pad3
+                        else:
+                            pad4 = F.pad(identity,[1,1,1,1]).to(device)
+                            conv3x3.weight.data += pad4
+                    elif kernel_size == 5:
+                        pad1 = F.pad(kernel_1x1.weight, [2,2,2,2]).to(device)
+                        conv3x3.weight.data = conv3x3.weight * s2.view(-1,1,1,1) + pad1 * s1.view(-1,1,1,1)
+                        if use_identity_scales:
+                            identity_scale_weight = s0
+                            pad3 = F.pad(identity*identity_scale_weight.view(-1,1,1,1),[2,2,2,2]).to(device)
+                            conv3x3.weight.data += pad3
+                        else:
+                            pad4 = F.pad(identity,[2,2,2,2]).to(device)
+                            conv3x3.weight.data += pad4
+                    elif kernel_size == 1:
+                        pad1 = F.pad(kernel_1x1.weight, [0,0,0,0]).to(device)
+                        conv3x3.weight.data = conv3x3.weight * s2.view(-1,1,1,1) + pad1 * s1.view(-1,1,1,1)
+                        if use_identity_scales:
+                            identity_scale_weight = s0
+                            pad3 = F.pad(identity*identity_scale_weight.view(-1,1,1,1),[0,0,0,0]).to(device)
+                            conv3x3.weight.data += pad3
+                        else:
+                            pad4 = F.pad(identity,[0,0,0,0]).to(device)
+                            conv3x3.weight.data += pad4
+        
+        # 更新规则mask
+        def generate_gradient_masks(self,scales_by_idx,conv3x3_by_idx,cpu_mode=False):
+            self.grad_mask_map = {}
+            for scales, conv3x3 in zip(scales_by_idx, conv3x3_by_idx):
+                para = conv3x3.weight
+                if len(scales) == 2:
+                    mask = torch.ones_like(para,device=scales[0].device) * (scales[1] ** 2).view(-1,1,1,1)
+                    mask[:,:,1:2,1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[0]**2).view(-1,1,1,1)
+                else:
+                    mask = torch.ones_like(para,device=scales[0].device) * (scales[2] ** 2).view(-1,1,1,1)
+                    mask[:,:,1:2,1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[1]**2).view(-1,1,1,1)
+                    ids = np.arange(para.shape[1])
+                    assert para.shape[1] == para.shape[0]
+                    mask[ids, ids, 1:2, 1:2] += 1.0
+                if cpu_mode:
+                    self.grad_mask_map[para] = mask
+                else:
+                    self.grad_mask_map[para] = mask.cuda()
+                    
+        def __setstate__(self, state):
+            super(SGD,self).__setstate__(state)
+            for group in self.param_groups:
+                group.setdefault('nesterov',False)
+                
+        def step(self, closure=None):
+            loss=None
+            if closure is not None:
+                loss = closure()
+            
+            for group in self.param_groups:
+                weight_decay = group['weight_decay']
+                momentum = group['momentum']
+                dampening = group['dampening']
+                nesterov = group['nesterov']
+                
+                for p in group['params']:
+                    if p.grad is None:
+                        continue
+                    if p in self.grad_mask_map:
+                        # 数据在这里乘更新规则mask
+                        d_p = p.grad.data * self.grad_mask_map[p]
+                    else:
+                        d_p = p.grad.data
+                        
+                    if weight_decay != 0:
+                        d_p.add_(weight_Decay, p.data)
+                    if momentum != 0:
+                        param_state = self.state[p]
+                        if 'momentum_buffer' not in param_state:
+                            buf = param_state['momentum_buffer'] = torch.clone(d_p).detach()
+                        else:
+                            buf = param_state['momentum_buffer']
+                            buf.mul_(momentum).add_(1 - dampening, d_p)
+                            if nesterov:
+                                d_p = d_p.add(momentum, buf)
+                            else:
+                                d_p = buf
+                                
+                    p.data.add_(-group['lr'], d_p)
+                    
+            return loss
+        
 ### 模型backbone修改
