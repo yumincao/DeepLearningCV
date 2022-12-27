@@ -32,9 +32,9 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
 
 ### 2. main.py(train)修改
 --- tools.train_net.py
-<br> &nbsp;&nbsp;--添加optimizer判别
-<br> &nbsp;&nbsp:&nbsp:&nbsp;--提取scale
-<br> &nbsp;&nbsp:&nbsp:&nbsp;--设计优化器
+<br> &nbsp;&nbsp;&nbsp;&nbsp;--添加optimizer判别
+<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--提取scale
+<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--设计优化器
 #### 2.1 主函数(tools.train_net.py)修改
     # 添加optimizer判别
     def train(..)
