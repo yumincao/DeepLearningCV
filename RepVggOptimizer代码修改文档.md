@@ -10,8 +10,8 @@
 ## 代码实现
 ### 1. config修改
 ---yaml
-+
----defaults.py
+<br> +
+<br> ---defaults.py
 #### 1.1 在yaml最后添加：
     TRAINING_MODE = ‘**’ 
         # 'hyper_search' ‘RepVgg’ 'Others'
@@ -31,6 +31,10 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
     _C.SCALE = ""
 
 ### 2. main.py(train)修改
+--- tools.train_net.py
+<br> &nbsp;&nbsp;--添加optimizer判别
+<br> &nbsp;&nbsp:&nbsp:&nbsp;--提取scale
+<br> &nbsp;&nbsp:&nbsp:&nbsp;--设计优化器
 #### 2.1 主函数(tools.train_net.py)修改
     # 添加optimizer判别
     def train(..)
