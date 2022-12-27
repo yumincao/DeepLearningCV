@@ -9,6 +9,9 @@
 
 ## 代码实现
 ### 1. config修改
+---yaml
++
+---defaults.py
 #### 1.1 在yaml最后添加：
     TRAINING_MODE = ‘**’ 
         # 'hyper_search' ‘RepVgg’ 'Others'
