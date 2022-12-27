@@ -263,4 +263,55 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
                     
             return loss
         
-### 模型backbone修改
+### 3.模型backbone,head修改
+---maskrcnn_benchmark.modeling.backbone.py 注册
+<br> +
+<br> ---repvgg block所在的库
+<br> +
+<br> ---maskrcnn_benchmark.modeling.backbone.resnet.py  backbone网络
+<br> +
+<br> ---FCOS head修改
+#### backbone.py 注册
+    def make_divisible(x,divisor):
+        return math.ceil(x/divisor) * divisor
+    
+    def get_block(training_mode:str):
+        if training_mode == 'hyper_search':
+            return LinearAddBlock
+        elif training_mode == 'RepVgg':
+            return RealVGGBlock
+            
+    @registry.BACKBONES.register("RepOpt-FPN-YUMIN")
+    def build_repvgg_fpn_backbone_ti(cfg):
+        # depth_mul = cfg.MODEL.DEPTH_MUL 后续如果想像efficient net一样引入深度因子，宽度因子，则需要使用这里
+        # width_mul = cfg.MODEL.WIDTH_MUL
+        
+        # num_repeats_backbone = [1,6 ,12,18,6]
+        # out_channels_backbone=[64,128,256,512,1024]
+        # num_repeats = [(max(round(i*depth_mul),1) if i>1 else i) for i in (num_repeats_backbone)]
+        # channels_list = [make_divisible(i*width_mul,8) for i in(out_channels_backbone)]
+        
+        channels_list = [32,64,128,192,384]
+        num_repeats = [1,3,3,4,3]
+        num_outs=5
+        out_channels = 96
+        start_level=1
+        add_extra_convs=True
+        extra_convs_on_inputs=False
+        
+        block = get_block(cfg.TRAINING_MODE)
+        backbone = new_resnet.ResNet(channels_list=channels_list,
+                                     num_repeats=num_repeats,
+                                     block=block)
+        fpn_channels_list = [64,128,192,384] # Hu版本不同
+        neck = fpn_module_repopt.FPN(channels_list=fpn_channels_list,
+                                        num_outs=num_outs,
+                                        out_channels=out_channels,
+                                        start_level=start_level,
+                                        add_extra_convs=add_extra_convs,
+                                        extra_convs_on_inputs=extra_convs_on_inputs)
+        backbone.out_channels = out_channels
+        neck.fpn_level_num = 5
+        head = build_fcos_module(cfg, out_channels, neck.fpn_level_num,block)
+        
+        return backbone, neck, head
