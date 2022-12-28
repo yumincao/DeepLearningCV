@@ -266,11 +266,13 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
 ### 3.模型backbone,head修改
 ---maskrcnn_benchmark.modeling.backbone.py 注册
 <br> +
-<br> ---repvgg block所在的库
+<br> ---判别用了哪种block（repvgg block所在的库common.py）
 <br> +
-<br> ---maskrcnn_benchmark.modeling.backbone.resnet.py  backbone网络
+<br> ---maskrcnn_benchmark.modeling.backbone.resnet.py  修改backbone网络
+<br> &nbsp;&nbsp;&nbsp;&nbsp; ---调用LinearAddBlock,RepBlock (repvgg block所在的库common.py)
 <br> +
 <br> ---FCOS head修改
+<br> &nbsp;&nbsp;&nbsp;&nbsp; ---调用LinearAddBlock,RepBlock (repvgg block所在的库common.py)
 #### backbone.py 注册
     def make_divisible(x,divisor):
         return math.ceil(x/divisor) * divisor
@@ -315,3 +317,98 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         head = build_fcos_module(cfg, out_channels, neck.fpn_level_num,block)
         
         return backbone, neck, head
+#### [注册]中调用了new_resnet，其结构为：
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    
+    from layers.common import RevVGGBlock, LinearAddBlock, RepBlock
+    
+    class ResNet(nn.Module):
+        def __init__(self, in_channels=3, channels_list=None, num_repeats=None, block=RepVGGBlock):
+            super().__init__()
+            assert channels_list is not None
+            assert num_repeats is not None
+            
+            self.stem = block(
+                            in_channels=in_channels,
+                            out_channels=channels_list[0],
+                            kernel_size=3,
+                            stride=2)
+            
+            self.ERBlock_2 = nn.Sequential(
+                                block(
+                                    in_channels=channels_list[0],
+                                    out_channels=channels_list[1],
+                                    kernel_size=3,
+                                    stride=2,
+                                    ),
+                                RepBlock(
+                                    in_channels=channels_list[1],
+                                    out_channels=channels_list[1],
+                                    n=num_repeats[1],
+                                    block=block,
+                                    )
+                                )
+                                
+            self.ERBlock_3 = nn.Sequential(
+                                block(
+                                    in_channels=channels_list[1],
+                                    out_channels=channels_list[2],
+                                    kernel_size=3,
+                                    stride=2,
+                                    ),
+                                RepBlock(
+                                    in_channels=channels_list[2],
+                                    out_channels=channels_list[2],
+                                    n=num_repeats[2],
+                                    block=block,
+                                    )
+                                )
+                                
+            self.ERBlock_4 = nn.Sequential(
+                                block(
+                                    in_channels=channels_list[2],
+                                    out_channels=channels_list[3],
+                                    kernel_size=3,
+                                    stride=2,
+                                    ),
+                                RepBlock(
+                                    in_channels=channels_list[3],
+                                    out_channels=channels_list[3],
+                                    n=num_repeats[3],
+                                    block=block,
+                                    )
+                                )
+                                
+            self.ERBlock_5 = nn.Sequential(
+                                block(
+                                    in_channels=channels_list[3],
+                                    out_channels=channels_list[4],
+                                    kernel_size=3,
+                                    stride=2,
+                                    ),
+                                RepBlock(
+                                    in_channels=channels_list[4],
+                                    out_channels=channels_list[4],
+                                    n=num_repeats[4],
+                                    block=block,
+                                    )
+                                )
+                                
+        def forward(self,x):
+            outputs=[]
+            x = self.stem(x)
+            x = self.ERBlock_2(x)
+            outputs.append(x)
+            x = self.ERBlock_3(x)
+            outputs.append(x)
+            x = self.ERBlock_4(x)
+            outputs.append(x)
+            x = self.ERBlock_5(x)
+            outputs.append(x)
+            
+            return tuple(outputs)
+#### block所在的库common.py
+    
+
