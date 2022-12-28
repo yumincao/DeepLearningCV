@@ -475,4 +475,6 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
         model = torch.load('model_0020000.pth')
         model = model['model'].state_dict()
         torch.save('format_model_0020000.pth')
+### 5.环境配置
+    参考yolov6和fcoshead，在合适的cuda下安装pytorch
 
