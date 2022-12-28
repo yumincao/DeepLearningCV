@@ -468,7 +468,7 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
     ..
     torch.save(data,save_file,_use_new_zipfile_serialization=False)
     
-    # 而在测试时，需要将模型转换为state_dict:
+    # 而在测试与onnx定点化读取文件时，需要将模型转换为state_dict:
     terminal:
         python
         import torch
