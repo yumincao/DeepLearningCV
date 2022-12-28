@@ -410,5 +410,6 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             
             return tuple(outputs)
 #### block所在的库common.py
+    在github相关文件里。注意为了量化，修改yolov6中relu为relu6
     
 
