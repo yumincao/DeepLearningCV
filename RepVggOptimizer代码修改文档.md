@@ -410,6 +410,69 @@ SCALE: "trainiing_dir/hyper_search/model_024000.pth"
             
             return tuple(outputs)
 #### block所在的库common.py
-    在github相关文件里。注意为了量化，修改yolov6中relu为relu6
+    在yolov6-layers-common.py, github相关文件里。注意为了量化，修改yolov6中relu为relu6
+#### 修改FCOSHead(maskrcnn_benchmark.modeling.rep.fcos.fcos.py)
+    # 注销conv部分：for i in range ... add_module...
+    # 从backbone的head开始，所有init都添加block， 如【backbone.py 注册】
+    self.bbox = nn.Sequential(
+                    RepBlock(
+                        in_channels=in_channels,
+                        out_channels=in_channels,
+                        n=self.rep_num,
+                        block=block)
+                        )
+    self.add_module('bbox',self.bbox)
+    self.kps = nn.Sequential(
+                    RepBlock(
+                        in_channels=in_channels,
+                        out_channels=in_channels,
+                        n=self.rep_num,
+                        block=block)
+                        )
+    self.add_module('kps',self.kps)
+    self.cls = nn.Sequential(
+                    RepBlock(
+                        in_channels=in_channels,
+                        out_channels=in_channels,
+                        n=self.rep_num,
+                        block=block)
+                        )
+    self.add_module('cls',self.cls)
     
+    # 然后修改forward部分
+    for l, feature in enumerate(x):
+        tmp_Feature = getattr(self,'cls')(feature)
+        tmp_feature = self.cls_logits(tmp_feature)
+        logits.append(tmp_feature[:,0:self.num_classes,:,:])
+        centerness.append(tmp_feature[:,15:16,:,:])
+    for l, feature in enumerate(x):
+        tmp_feature = getattr(self,'bbox')(feature)
+        bbox_pred = self.bbox_pred(tmp_feature)
+        if self.norm_reg_targets:
+            if self.training:
+                bbox..
+            else:
+                ..
+        else:
+            ..
+    for l, feature in enumerate(x):
+        tmp_feature = getattr(self,'kps')(feature)
+        kps_pred = self.kps_pred(tmp_feature)
+        ..
+        ..
+    return logits,bbox_reg,kps_reg,centerness
+    
+### 4.文件存储
+    # 注意在checkpoint.py中修改存储方式，存储整个模型而不是state_dict,目的是读取scale
+    data["model"] = deepcopy(de_parallel(self.model))
+    ..
+    torch.save(data,save_file,_use_new_zipfile_serialization=False)
+    
+    # 而在测试时，需要将模型转换为state_dict:
+    terminal:
+        python
+        import torch
+        model = torch.load('model_0020000.pth')
+        model = model['model'].state_dict()
+        torch.save('format_model_0020000.pth')
 
